@@ -1,7 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
+  --font-cinzel: var(--font-cinzel), serif;
+  --font-inter: var(--font-inter), sans-serif;
   --color-background: #0a0000;
   --color-foreground: #f2f2f2;
   --color-card: #141414;
@@ -31,12 +32,12 @@
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-inter), sans-serif;
   overflow-x: hidden;
 }
 
 .font-cinzel {
-  font-family: 'Cinzel', serif;
+  font-family: var(--font-cinzel), serif;
 }
 
 /* ─── GLITCH TEXT EFFECT ─── */
@@ -131,9 +132,9 @@ html { scroll-behavior: smooth; }
               inset 0 0 15px rgba(255, 69, 0, 0.05);
 }
 
-/* ─── CHROMATIC / HOLOGRAPHIC TEXT — iridiscente tipo FRIDA ─── */
+/* ─── CHROMATIC / HOLOGRAPHIC TEXT ─── */
 .chromatic-fire {
-  font-family: 'Cinzel', serif;
+  font-family: var(--font-cinzel), serif;
   font-weight: 900;
   background: linear-gradient(
     180deg,

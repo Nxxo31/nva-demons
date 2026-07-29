@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { Send, Mail, MapPin } from 'lucide-react'
 
 export default function Contact() {
@@ -15,19 +16,31 @@ export default function Contact() {
   return (
     <section id="contact" className="relative py-24 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="reveal text-3xl md:text-5xl font-cinzel font-bold fire-text mb-4">
+        <motion.div
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.7 }}
+        >
+          <h2 className="text-3xl md:text-5xl font-cinzel font-bold fire-text mb-4">
             Contacto
           </h2>
           <div className="section-divider max-w-xs mx-auto mb-4" />
-          <p className="reveal text-gray-500 max-w-xl mx-auto">
+          <p className="text-gray-500 max-w-xl mx-auto">
             Reservaciones, booking, o simplemente decir hola
           </p>
-        </div>
+        </motion.div>
 
         <div className="grid md:grid-cols-2 gap-10">
           {/* Info */}
-          <div className="reveal space-y-6">
+          <motion.div
+            className="space-y-6"
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.7 }}
+          >
             <div className="flex items-start gap-4">
               <Mail className="w-5 h-5 text-orange-600 mt-1" />
               <div>
@@ -39,22 +52,25 @@ export default function Contact() {
               <MapPin className="w-5 h-5 text-orange-600 mt-1" />
               <div>
                 <p className="text-sm font-medium text-gray-300">Ubicación</p>
-                <p className="text-sm text-gray-600">CDMX / Desierto de Sonora</p>
+                <p className="text-sm text-gray-600">Bogotá / Desierto de la Tatacoa</p>
               </div>
             </div>
             <div className="pt-6">
               <p className="text-xs text-gray-700 leading-relaxed">
-                Para booking, colaboraciones o consultas generales, 
+                Para booking, colaboraciones o consultas generales,
                 escríbenos y te responderemos a la brevedad.
               </p>
             </div>
-          </div>
+          </motion.div>
 
           {/* Form */}
-          <form
+          <motion.form
             onSubmit={handleSubmit}
-            className="reveal space-y-4"
-            style={{ transitionDelay: '0.3s' }}
+            className="space-y-4"
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.7, delay: 0.1 }}
           >
             <input
               type="text"
@@ -74,9 +90,10 @@ export default function Contact() {
               className="w-full px-4 py-3 bg-black/40 border border-red-900/30 rounded-lg text-sm text-gray-300 placeholder-gray-700 focus:outline-none focus:border-orange-800 transition-colors resize-none"
               required
             />
-            <button
+            <motion.button
               type="submit"
               className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-800 to-orange-600 text-white rounded-lg text-sm font-cinzel tracking-wider hover:from-red-700 hover:to-orange-500 transition-all duration-300 shadow-lg shadow-red-900/30"
+              whileTap={{ scale: 0.97 }}
             >
               {sent ? (
                 '✅ Mensaje enviado'
@@ -86,8 +103,8 @@ export default function Contact() {
                   Enviar Mensaje
                 </>
               )}
-            </button>
-          </form>
+            </motion.button>
+          </motion.form>
         </div>
       </div>
     </section>

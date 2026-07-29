@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useMemo, useEffect } from 'react'
+import { useRef, useEffect, useState, useMemo } from 'react'
 import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
@@ -286,7 +286,7 @@ function Cacti() {
   useEffect(() => {
     if (!meshRef.current) return
     // Scale and position
-    transforms.forEach((t, i) => {
+    transforms.forEach((t: { x: number; z: number; scale: number; rotation: number }, i: number) => {
       dummy.position.set(t.x, -0.8, t.z)
       dummy.scale.set(t.scale, t.scale, t.scale)
       dummy.rotation.y = t.rotation
@@ -467,26 +467,126 @@ const Lights = () => (
     {/* Rim light for cactus silhouettes */}
     <pointLight position={[-2, 0.8, 6]} intensity={0.6} color="#ff3300" distance={8} decay={2} />
     <hemisphereLight args={['#662211', '#110000', 0.35]} />
-    {/* Subtle red fog for distance */}
-    <fog attach="fog" args={['#661111', 8, 18]} />
+    {/* Inferno fog — blends terrain into red/orange horizon */}
+    <fog attach="fog" args={['#3a0805', 7, 18]} />
   </>
 )
 
 // ====================================================================
-// 7. MAIN EXPORT
+// 7b. INFERNO SKY — volumetric red/orange gradient backdrop
+// ====================================================================
+const InfernoSky = () => {
+  const uniforms = useMemo(() => ({
+    uTime: { value: 0 },
+  }), [])
+
+  useFrame(({ clock }) => {
+    uniforms.uTime.value = clock.elapsedTime
+  })
+
+  return (
+    <mesh scale={[-1, 1, 1]} position={[0, 8, 0]}>
+      <sphereGeometry args={[20, 32, 16]} />
+      <shaderMaterial
+        uniforms={uniforms}
+        side={THREE.BackSide}
+        depthWrite={false}
+        vertexShader={`
+          varying vec3 vWorldPos;
+          void main() {
+            vWorldPos = position;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform float uTime;
+          varying vec3 vWorldPos;
+
+          // Simple hash-noise for cloud variation
+          float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+          }
+          float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                       mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+          }
+          float fbm(vec2 p) {
+            float v = 0.0, a = 0.5;
+            for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.0; a *= 0.5; }
+            return v;
+          }
+
+          void main() {
+            vec3 dir = normalize(vWorldPos);
+            float h = dir.y; // height factor: 0 = horizon, 1 = zenith
+
+            // ── Inferno gradient: horizon = bright orange/red, zenith = dark blood ──
+            vec3 horizon = vec3(1.0, 0.35, 0.1);      // glowing orange
+            vec3 mid = vec3(0.45, 0.08, 0.02);        // deep ember red
+            vec3 zenith = vec3(0.08, 0.01, 0.0);      // near-black blood
+
+            float t1 = smoothstep(0.0, 0.15, h);
+            float t2 = smoothstep(0.15, 0.6, h);
+            vec3 sky = mix(horizon, mid, t1);
+            sky = mix(sky, zenith, t2);
+
+            // ── Animated cloud bands (smoke/haze) ──
+            vec2 cloudUV = vec2(dir.x * 3.0 + uTime * 0.02, dir.y * 4.0);
+            float clouds = fbm(cloudUV);
+            clouds = smoothstep(0.4, 0.7, clouds);
+            vec3 cloudColor = vec3(0.6, 0.15, 0.03);
+            sky = mix(sky, sky * cloudColor * 1.5, clouds * 0.3 * (1.0 - t2));
+
+            // ── Horizon glow pulse ──
+            float glow = pow(1.0 - max(h, 0.0), 3.0);
+            sky += vec3(1.0, 0.3, 0.05) * glow * 0.4;
+
+            gl_FragColor = vec4(sky, 1.0);
+          }
+        `}
+      />
+    </mesh>
+  )
+}
+
+// ====================================================================
+// 8. MAIN EXPORT WITH FALLBACK
 // ====================================================================
 export default function DesertScene() {
   const mouseRef = useRef(new THREE.Vector2(0, 0))
+  const [webglFailed, setWebglFailed] = useState(false)
+
+  if (webglFailed) {
+    // Fallback: show a static background image of the Tatacoa desert
+    return (
+      <div className="fixed inset-0 z-0 w-screen h-screen" 
+           style={{ 
+             backgroundImage: 'url(/images/tatacoa-bg.jpg)', 
+             backgroundSize: 'cover', 
+             backgroundPosition: 'center',
+             backgroundRepeat: 'no-repeat'
+           }} />
+    )
+  }
 
   return (
-    <div className="fixed inset-0 -z-10 w-screen h-screen" style={{ background: '#0a0000' }}>
+    <div className="fixed inset-0 z-0 w-screen h-screen" style={{ background: '#0a0000' }}>
       <Canvas
-        camera={{ position: [0, 3.2, 6], fov: 52, near: 0.1, far: 25 }}
+        camera={{ position: [0, 3.2, 6], fov: 52, near: 0.1, far: 30 }}
         dpr={[1, 1.5]}
         style={{ width: '100vw', height: '100vh' }}
-        gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
-        onCreated={({ gl }) => { gl.setClearColor('#220505') }}
+        gl={{
+          antialias: true,
+          alpha: false,
+          powerPreference: 'low-power',
+          failIfMajorPerformanceCaveat: false,
+        }}
+        onCreated={({ gl }) => { gl.setClearColor('#1a0505') }}
       >
+        <InfernoSky />
         <Lights />
         <BadlandsTerrain mouse={mouseRef} />
         <Cacti />

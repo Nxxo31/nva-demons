@@ -1,7 +1,22 @@
 import type { Metadata } from 'next'
+import { Cinzel, Inter } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+
+const cinzel = Cinzel({
+  subsets: ['latin'],
+  weight: ['400', '700', '900'],
+  variable: '--font-cinzel',
+  display: 'swap',
+})
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300', '400', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'NVA DEMONS — Electronic Music Collective',
@@ -19,8 +34,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className="dark">
-      <body className="min-h-screen bg-[#0a0000]">
+    <html lang="es" className={`dark ${cinzel.variable} ${inter.variable}`}>
+      <body className="min-h-screen bg-[#0a0000] font-inter">
         <Navbar />
         <main>{children}</main>
         <Footer />

@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import dynamic from 'next/dynamic'
+import { motion } from 'framer-motion'
 import Hero from '@/components/Hero'
 import Events from '@/components/Events'
 import Music from '@/components/Music'
@@ -8,7 +9,17 @@ import Gallery from '@/components/Gallery'
 import Tickets from '@/components/Tickets'
 import Contact from '@/components/Contact'
 
-// ─── Canvas: fire particles + cursor burn marks ───
+// ─── Dynamic import: DesertScene loads only on client (uses WebGL) ───
+const DesertScene = dynamic(() => import('@/components/Scene3D/DesertScene'), {
+  ssr: false,
+  loading: () => (
+    <div className="fixed inset-0 -z-10 w-screen h-screen bg-[#220505]" />
+  ),
+})
+
+// ─── Fire Overlay Canvas (cursor burns + ambient embers) ───
+import { useRef, useEffect } from 'react'
+
 function FireOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null!)
   const mouseRef = useRef({ x: -200, y: -200 })
@@ -29,6 +40,14 @@ function FireOverlay() {
     const onMove = (e: MouseEvent) => { mouseRef.current = { x: e.clientX, y: e.clientY } }
     window.addEventListener('mousemove', onMove)
 
+    // Touch support
+    const onTouch = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        mouseRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      }
+    }
+    window.addEventListener('touchmove', onTouch, { passive: true })
+
     const burns: { x: number; y: number; alpha: number; r: number }[] = []
     let frame = 0
 
@@ -47,15 +66,14 @@ function FireOverlay() {
             size: 10 + Math.random() * 30,
             life: 0,
             maxLife: 25 + Math.random() * 40,
-            hue: Math.random() * 40, // 0-40 = red to orange
+            hue: Math.random() * 40,
           })
         }
-        // Burn marks
         burns.push({ x: mouseRef.current.x, y: mouseRef.current.y, alpha: 0.5, r: 18 + Math.random() * 12 })
         if (burns.length > 120) burns.splice(0, burns.length - 120)
       }
 
-      // Ambient embers rising
+      // Ambient embers rising from bottom
       if (frame % 4 === 0) {
         particlesRef.current.push({
           x: Math.random() * canvas.width,
@@ -83,7 +101,7 @@ function FireOverlay() {
         ctx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2)
       }
 
-      // Draw particles
+      // Draw fire particles
       const arr = particlesRef.current
       for (let i = arr.length - 1; i >= 0; i--) {
         const p = arr[i]
@@ -97,12 +115,12 @@ function FireOverlay() {
         const alpha = Math.sin(prog * Math.PI) * 0.85
         const sz = p.size * (1 - prog * 0.3)
 
-        const h = p.hue // 0-40
+        const h = p.hue
         ctx.globalCompositeOperation = 'screen'
         const g = ctx.createRadialGradient(p.x, p.y - sz * 0.2, 0, p.x, p.y, sz)
-        g.addColorStop(0, `hsla(${40 + h * 0.5}, 100%, 80%, ${alpha})`)    // yellow-white core
-        g.addColorStop(0.3, `hsla(${h + 10}, 100%, 60%, ${alpha * 0.7})`) // orange
-        g.addColorStop(0.7, `hsla(${h}, 100%, 40%, ${alpha * 0.4})`)      // red-orange
+        g.addColorStop(0, `hsla(${40 + h * 0.5}, 100%, 80%, ${alpha})`)
+        g.addColorStop(0.3, `hsla(${h + 10}, 100%, 60%, ${alpha * 0.7})`)
+        g.addColorStop(0.7, `hsla(${h}, 100%, 40%, ${alpha * 0.4})`)
         g.addColorStop(1, `hsla(${h - 10}, 100%, 20%, 0)`)
         ctx.fillStyle = g
         ctx.beginPath()
@@ -115,7 +133,12 @@ function FireOverlay() {
       animId = requestAnimationFrame(animate)
     }
     animate()
-    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); window.removeEventListener('mousemove', onMove) }
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener('resize', resize)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('touchmove', onTouch)
+    }
   }, [])
 
   return (
@@ -131,34 +154,18 @@ function FireOverlay() {
 export default function Home() {
   return (
     <>
-      {/* Layer 1: Ground — aerial Tatacoa photo */}
-      <div
-        className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: 'url(/images/tatacoa-ground.jpg)',
-          filter: 'brightness(0.55) saturate(1.35) contrast(1.1)',
-        }}
-      />
+      {/* Layer 1: 3D Desert Scene — replaces static background images */}
+      <DesertScene />
 
-      {/* Layer 2: Sky view — birds eye Tatacoa as atmospheric top layer */}
+      {/* Layer 2: Dark gradient overlay for legibility (above 3D scene, below fire + content) */}
       <div
-        className="fixed inset-0 -z-20 bg-cover bg-center bg-no-repeat opacity-70"
-        style={{
-          backgroundImage: 'url(/images/tatacoa-sky-view.jpg)',
-          filter: 'brightness(0.4) saturate(1.2) contrast(1.2) hue-rotate(-5deg)',
-          backgroundPosition: 'center 20%',
-        }}
-      />
-
-      {/* Layer 3: Dark gradient center vignette */}
-      <div
-        className="fixed inset-0 -z-10 pointer-events-none"
+        className="fixed inset-0 z-[1] pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse 80% 60% at 50% 50%, transparent 20%, rgba(0,0,0,0.55) 100%)',
         }}
       />
 
-      {/* Fire particle canvas */}
+      {/* Fire particle canvas (screen blend on top of 3D scene) */}
       <FireOverlay />
 
       {/* Content */}

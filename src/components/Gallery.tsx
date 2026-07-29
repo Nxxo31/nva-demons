@@ -1,46 +1,78 @@
 'use client'
 
+import { motion } from 'framer-motion'
+
 export default function Gallery() {
-  const images = [1, 2, 3, 4, 5, 6]
+  const images = [
+    { src: '/images/tatacoa-aerial.jpg', alt: 'Vista aérea del Desierto de la Tatacoa, columnas de erosión' },
+    { src: '/images/tatacoa-ground.jpg', alt: 'Suelo erosionado del Tatacoa, grietas y cárcavas' },
+    { src: '/images/tatacoa-sky-view.jpg', alt: 'Vista cenital del Tatacoa, colores rojizos y ocres' },
+    { src: '/images/tatacoa-bg.jpg', alt: 'Paisaje del Tatacoa al atardecer, sombras largas y cielo rojo' },
+  ]
 
   return (
     <section id="gallery" className="relative py-24 px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="reveal text-3xl md:text-5xl font-cinzel font-bold fire-text mb-4">
+        <motion.div
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.7 }}
+        >
+          <h2 className="text-3xl md:text-5xl font-cinzel font-bold fire-text mb-4">
             Galería
           </h2>
           <div className="section-divider max-w-xs mx-auto mb-4" />
-          <p className="reveal text-gray-500 max-w-xl mx-auto">
-            Momentos de nuestros rituales pasados
+          <p className="text-gray-500 max-w-xl mx-auto">
+            Momentos de nuestros rituales pasados en el Desierto Infernal
           </p>
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-          {images.map((_, i) => (
-            <div
+        <motion.div
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+        >
+          {images.map((img, i) => (
+            <motion.div
               key={i}
-              className="reveal aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-red-950/40 to-black/60 border border-red-900/20 hover:border-red-800/50 transition-all duration-500 group"
-              style={{
-                transitionDelay: `${i * 0.1}s`,
-                gridRow: i === 0 ? 'span 2' : undefined,
-              }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.08, type: 'spring', stiffness: 300, damping: 20 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative aspect-w-16 aspect-h-9 overflow-hidden rounded-xl border border-red-900/20 hover:border-red-800/30 transition-all duration-500 group"
             >
-              <div className="w-full h-full flex items-center justify-center relative">
-                {/* Placeholder with gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-red-950/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="text-center relative z-10">
-                  <div className="w-16 h-16 mx-auto rounded-full border border-red-900/30 flex items-center justify-center mb-2 group-hover:border-orange-700 transition-colors">
-                    <svg className="w-6 h-6 text-red-800/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <p className="text-xs text-gray-700 font-cinzel">FOTO {i + 1}</p>
+              {/* Overlay gradient */}
+              <div className="absolute inset-0 bg-gradient-to-b from-red-950/30 to-black/60" />
+              
+              {/* Image */}
+              <img
+                src={img.src}
+                alt={img.alt}
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000"
+                loading="lazy"
+              />
+              
+              {/* Hover info */}
+              <motion.div
+                className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+              >
+                <div className="w-16 h-16 rounded-full border border-red-900/40 flex items-center justify-center mb-3 group-hover:border-orange-600 transition-colors">
+                  <div className="w-8 h-8 bg-red-800 rounded-full" />
                 </div>
-              </div>
-            </div>
+                <p className="text-xs text-gray-600 font-cinzel">
+                  TATACOA {i + 1}
+                </p>
+              </motion.div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   )
