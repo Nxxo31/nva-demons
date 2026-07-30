@@ -93,13 +93,14 @@ nva-demons/
 ### Fase 1 — Front-end (MVP)
 - [x] Investigación de librerías 3D y referencias de diseño
 - [x] Investigación de sistema de ticketing
-- [ ] Set up Next.js con R3F
-- [ ] Escena 3D del desierto con Three.js (terreno, cielo, atmósfera)
-- [ ] Efecto de cursor que quema la arena (custom shader)
-- [ ] Fuego volumétrico con THREE.Fire
-- [ ] UI completa: Hero, Navbar, Events, Music, Gallery, Tickets, Contact, Footer
-- [ ] Diseño responsive + animaciones
-- [ ] Despliegue en localhost para preview
+- [x] Set up Next.js con R3F
+- [x] Escena 3D del desierto con Three.js (terreno, cielo, atmósfera)
+- [x] Efecto de cursor que quema la arena (custom shader)
+- [x] Fuego volumétrico con THREE.Fire
+- [x] UI completa: Hero, Navbar, Events, Music, Gallery, Tickets, Contact, Footer
+- [x] Diseño responsive + animaciones
+- [x] Build passing: `npm run build` exit 0, 0 lint errors (4 warnings no-bloqueantes)
+- [x] Despliegue en localhost para preview
 
 ### Fase 2 — Sistema de Ticketing
 - [ ] Deploy de Hi.Events backend

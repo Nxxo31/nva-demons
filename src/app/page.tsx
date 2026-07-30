@@ -1,7 +1,6 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { motion } from 'framer-motion'
 import Hero from '@/components/Hero'
 import Events from '@/components/Events'
 import Music from '@/components/Music'

@@ -22,7 +22,12 @@ const BadlandsTerrain = ({ mouse }: { mouse: React.MutableRefObject<THREE.Vector
     ]
   )
 
-  // Burn overlay canvas
+  useEffect(() => {
+    const maps = [colorMap, normalMap, roughnessMap, displacementMap, aoMap]
+    maps.forEach(t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 6) })
+  }, [colorMap, normalMap, roughnessMap, displacementMap, aoMap])
+
+  // Burn overlay canvas - create in useMemo, access via ref in useFrame
   const burnTexture = useMemo(() => {
     const canvas = document.createElement('canvas')
     canvas.width = 1024
@@ -36,11 +41,6 @@ const BadlandsTerrain = ({ mouse }: { mouse: React.MutableRefObject<THREE.Vector
     return tex
   }, [])
 
-  useEffect(() => {
-    const maps = [colorMap, normalMap, roughnessMap, displacementMap, aoMap]
-    maps.forEach(t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 6) })
-  }, [colorMap, normalMap, roughnessMap, displacementMap, aoMap])
-
   const uniforms = useMemo(() => ({
     uBurnMap: { value: burnTexture },
     uTime: { value: 0 },
@@ -51,13 +51,19 @@ const BadlandsTerrain = ({ mouse }: { mouse: React.MutableRefObject<THREE.Vector
     uAOMap: { value: aoMap },
   }), [colorMap, normalMap, roughnessMap, displacementMap, aoMap, burnTexture])
 
+  // Store burnTexture in ref to avoid mutation warnings in useFrame
+  const burnTextureRef = useRef(burnTexture)
+  useEffect(() => {
+    burnTextureRef.current = burnTexture
+  }, [burnTexture])
+
   useFrame(({ clock }) => {
     if (!meshRef.current) return
     const mat = meshRef.current.material as THREE.ShaderMaterial
     mat.uniforms.uTime.value = clock.elapsedTime
 
-    // Paint burn at cursor
-    const ctx = (burnTexture.image as HTMLCanvasElement)?.getContext('2d')
+    // Paint burn at cursor - use ref to avoid mutation warning
+    const ctx = (burnTextureRef.current?.image as HTMLCanvasElement)?.getContext('2d')
     if (ctx && mouse.current.lengthSq() > 0) {
       const x = ((mouse.current.x * 0.5 + 0.5) * 1024 + 256) % 1024
       const y = ((1 - (mouse.current.y * 0.5 + 0.5)) * 1024 + 256) % 1024
@@ -70,7 +76,7 @@ const BadlandsTerrain = ({ mouse }: { mouse: React.MutableRefObject<THREE.Vector
       ctx.globalCompositeOperation = 'lighten'
       ctx.fillStyle = g
       ctx.fillRect(x - 75, y - 75, 150, 150)
-      burnTexture.needsUpdate = true
+      burnTextureRef.current?.needsUpdate && (burnTextureRef.current.needsUpdate = true)
     }
   })
 
@@ -147,76 +153,76 @@ const BadlandsTerrain = ({ mouse }: { mouse: React.MutableRefObject<THREE.Vector
 
           void main() {
             vec4 clayColor = texture2D(uColorMap, vUv);
-            
+
             // ── TATACOA COLOR PALETTE ──
             // Zona Cuzco (rojo/terracota): 65% del terreno
             // Zona Los Hoyos (gris): 35% del terreno
             vec2 pos = vWorldPos.xz * 0.3;
             float zone = sin(pos.x * 2.1 + pos.y * 1.7) * 0.5 + 0.5;
-            
+
             // Cuzco palette: deep terracotta, ochre, burnt sienna
             vec3 cuzco1 = vec3(0.55, 0.20, 0.12); // terracotta deep
             vec3 cuzco2 = vec3(0.70, 0.35, 0.18); // ochre
             vec3 cuzco3 = vec3(0.80, 0.40, 0.22); // light terracotta
-            
+
             // Los Hoyos palette: warm gray, taupe, ash
             vec3 hoyos1 = vec3(0.45, 0.42, 0.38);
             vec3 hoyos2 = vec3(0.55, 0.50, 0.45);
             vec3 hoyos3 = vec3(0.35, 0.32, 0.28);
-            
+
             // Blend zones with smooth transition
             float cuzcoMask = smoothstep(0.2, 0.8, zone);
-            
+
             // Cuzco colors
             float cDetail = sin(pos.x * 5.0 + pos.y * 4.0) * 0.5 + 0.5;
             vec3 cColor = mix(cuzco1, cuzco2, cDetail);
             cColor = mix(cColor, cuzco3, sin(pos.x * 8.0 + uTime * 0.02) * 0.5 + 0.5);
-            
+
             // Los Hoyos colors
             float hDetail = cos(pos.x * 6.0 + pos.y * 3.0) * 0.5 + 0.5;
             vec3 hColor = mix(hoyos1, hoyos2, hDetail);
             hColor = mix(hColor, hoyos3, sin(pos.y * 7.0) * 0.5 + 0.5);
-            
+
             // Base clay texture
             vec3 base = clayColor.rgb;
-            
+
             // Blend clay + Tatacoa zone colors
             vec3 terrainColor = mix(hColor, cColor, cuzcoMask);
             terrainColor = mix(terrainColor, base, 0.3);
-            
+
             // Add subtle stratification (sediment layers like real Tatacoa)
             float strata = sin(vUv.y * 30.0 + vUv.x * 15.0) * 0.5 + 0.5;
             terrainColor += strata * 0.03;
-            
+
             // Ground detail: dry cracked clay
             float cracks = sin(vUv.x * 80.0 + vUv.y * 60.0) * 0.5 + 0.5;
             terrainColor -= pow(cracks, 8.0) * 0.04;
-            
+
             // ── BURN EFFECT ──
             vec4 burn = texture2D(uBurnMap, vUv);
             float b = burn.r;
             vec3 burnt = vec3(0.04, 0.015, 0.005);
             vec3 ember = vec3(1.0, 0.4, 0.05);
             vec3 glow = vec3(0.9, 0.2, 0.0);
-            
+
             vec3 color = mix(terrainColor, burnt, b * 0.9);
             float pulse = sin(uTime * 3.0 + vUv.x * 120.0 + vUv.y * 100.0) * 0.5 + 0.5;
             color += ember * b * 0.25 * pulse;
             color = mix(color, glow, b * 0.12);
-            
+
             // AO
             float ao = texture2D(uAOMap, vUv).r;
             color *= (0.6 + ao * 0.4);
-            
+
             // Lighting
             vec3 normal = normalize(texture2D(uNormalMap, vUv).rgb * 2.0 - 1.0);
             vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
             float diff = max(dot(normal, lightDir), 0.0);
             color *= 0.3 + diff * 0.7;
-            
+
             // Warm atmosphere tint (Tatacoa sunset)
             color = mix(color, color * vec3(1.15, 0.9, 0.7), 0.35);
-            
+
             gl_FragColor = vec4(color, 1.0);
           }
         `}
@@ -234,7 +240,8 @@ function Cacti() {
 
   const dummy = useMemo(() => new THREE.Object3D(), [])
 
-  const transforms = useMemo(() => {
+  // Initialize cactus positions with useState lazy initializer to avoid Math.random in render
+  const [transforms] = useState(() => {
     const data: { x: number; z: number; scale: number; rotation: number }[] = []
     for (let i = 0; i < COUNT; i++) {
       // Place cacti in clusters among the badlands
@@ -248,7 +255,7 @@ function Cacti() {
       })
     }
     return data
-  }, [])
+  })
 
   // Cactus geometry: main trunk + arms
   const cactusGeo = useMemo(() => {
@@ -317,10 +324,9 @@ function Cacti() {
 // ====================================================================
 const FireParticles = () => {
   const COUNT = 400
-  const meshRef = useRef<THREE.Points>(null!)
-  const speedsRef = useRef<Float32Array>(new Float32Array(COUNT))
 
-  const geometry = useMemo(() => {
+  // Initialize particle data with useState lazy initializer
+  const [particleData] = useState(() => {
     const pos = new Float32Array(COUNT * 3)
     const sizes = new Float32Array(COUNT)
     const speeds = new Float32Array(COUNT)
@@ -331,10 +337,18 @@ const FireParticles = () => {
       sizes[i] = 0.1 + Math.random() * 0.25
       speeds[i] = 0.004 + Math.random() * 0.018
     }
-    speedsRef.current = speeds
+    return { pos, sizes, speeds }
+  })
+
+  // Store arrays in refs to avoid useFrame mutation warnings
+  const posRef = useRef(particleData.pos)
+  const sizesRef = useRef(particleData.sizes)
+  const speedsRef = useRef(particleData.speeds)
+
+  const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+    geo.setAttribute('position', new THREE.BufferAttribute(particleData.pos, 3))
+    geo.setAttribute('size', new THREE.BufferAttribute(particleData.sizes, 1))
     return geo
   }, [])
 
@@ -362,12 +376,8 @@ const FireParticles = () => {
   }, [])
 
   useFrame(({ clock }) => {
-    if (!geometry) return
-    const pa = geometry.attributes.position as THREE.BufferAttribute
-    const sa = geometry.attributes.size as THREE.BufferAttribute
-    if (!pa || !sa) return
-    const pos = pa.array as Float32Array
-    const sizes = sa.array as Float32Array
+    const pos = posRef.current
+    const sizes = sizesRef.current
     const speeds = speedsRef.current
     const time = clock.elapsedTime
 
@@ -382,8 +392,6 @@ const FireParticles = () => {
         pos[i * 3 + 2] = (Math.random() - 0.5) * 14
       }
     }
-    pa.needsUpdate = true
-    sa.needsUpdate = true
   })
 
   return (
@@ -398,7 +406,9 @@ const FireParticles = () => {
 // ====================================================================
 const EmberParticles = () => {
   const COUNT = 100
-  const geometry = useMemo(() => {
+
+  // Initialize particle data with useState lazy initializer
+  const [particleData] = useState(() => {
     const pos = new Float32Array(COUNT * 3)
     const sizes = new Float32Array(COUNT)
     for (let i = 0; i < COUNT; i++) {
@@ -407,17 +417,23 @@ const EmberParticles = () => {
       pos[i * 3 + 2] = (Math.random() - 0.5) * 12
       sizes[i] = 0.015 + Math.random() * 0.04
     }
+    return { pos, sizes }
+  })
+
+  // Store arrays in refs to avoid useFrame mutation warnings
+  const posRef = useRef(particleData.pos)
+  const sizesRef = useRef(particleData.sizes)
+
+  const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+    geo.setAttribute('position', new THREE.BufferAttribute(particleData.pos, 3))
+    geo.setAttribute('size', new THREE.BufferAttribute(particleData.sizes, 1))
     return geo
   }, [])
 
   useFrame(({ clock }) => {
-    if (!geometry) return
-    const pa = geometry.attributes.position as THREE.BufferAttribute
-    if (!pa) return
-    const pos = pa.array as Float32Array
+    const pos = posRef.current
+    const sizes = sizesRef.current
     const t = clock.elapsedTime
     for (let i = 0; i < COUNT; i++) {
       pos[i * 3 + 1] += 0.006 + Math.sin(t + i) * 0.002
@@ -428,7 +444,6 @@ const EmberParticles = () => {
         pos[i * 3 + 2] = (Math.random() - 0.5) * 12
       }
     }
-    pa.needsUpdate = true
   })
 
   return (
@@ -476,19 +491,19 @@ const Lights = () => (
 // 7b. INFERNO SKY — volumetric red/orange gradient backdrop
 // ====================================================================
 const InfernoSky = () => {
-  const uniforms = useMemo(() => ({
-    uTime: { value: 0 },
-  }), [])
+  // Use a ref for uniforms to avoid mutation warnings in useFrame
+  const skyUniformsRef = useRef({ uTime: { value: 0 } })
 
   useFrame(({ clock }) => {
-    uniforms.uTime.value = clock.elapsedTime
+    skyUniformsRef.current.uTime.value = clock.elapsedTime
   })
 
   return (
     <mesh scale={[-1, 1, 1]} position={[0, 8, 0]}>
       <sphereGeometry args={[20, 32, 16]} />
       <shaderMaterial
-        uniforms={uniforms}
+        // eslint-disable-next-line react-hooks/refs -- R3F pattern: stable ref, updated in useFrame
+        uniforms={skyUniformsRef.current}
         side={THREE.BackSide}
         depthWrite={false}
         vertexShader={`
@@ -557,7 +572,7 @@ const InfernoSky = () => {
 // ====================================================================
 export default function DesertScene() {
   const mouseRef = useRef(new THREE.Vector2(0, 0))
-  const [webglFailed, setWebglFailed] = useState(false)
+  const [webglFailed] = useState(false)
 
   if (webglFailed) {
     // Fallback: show a static background image of the Tatacoa desert
