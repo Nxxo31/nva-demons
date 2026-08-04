@@ -3,7 +3,9 @@
 import { useRef, useEffect, useState, useMemo } from 'react'
 import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import CursorBurnFlames from './CursorBurnFlames'
+import VolumetricFire from './VolumetricFire'
+import CactiColumnar from './CactiColumnar'
 
 // ====================================================================
 // 1. BADLANDS TERRAIN — Tatacoa-inspired (cárcavas, arcilla, terracota)
@@ -232,226 +234,9 @@ const BadlandsTerrain = ({ mouse }: { mouse: React.MutableRefObject<THREE.Vector
 }
 
 // ====================================================================
-// 2. COLUMNAR CACTI — Tatacoa cactus columnares (InstancedMesh)
+// 2-4. COLUMNAR CACTI + FIRE VOLUMETRICO + CURSOR BURN + PARTICULAS
+//      (extraidos como componentes dedicados en Scene3D/ — ver imports)
 // ====================================================================
-function Cacti() {
-  const meshRef = useRef<THREE.InstancedMesh>(null!)
-  const COUNT = 120
-
-  const dummy = useMemo(() => new THREE.Object3D(), [])
-
-  // Initialize cactus positions with useState lazy initializer to avoid Math.random in render
-  const [transforms] = useState(() => {
-    const data: { x: number; z: number; scale: number; rotation: number }[] = []
-    for (let i = 0; i < COUNT; i++) {
-      // Place cacti in clusters among the badlands
-      const angle = Math.random() * Math.PI * 2
-      const radius = 3 + Math.random() * 8
-      data.push({
-        x: Math.cos(angle) * radius,
-        z: Math.sin(angle) * radius,
-        scale: 0.6 + Math.random() * 1.4,
-        rotation: Math.random() * Math.PI * 2,
-      })
-    }
-    return data
-  })
-
-  // Cactus geometry: main trunk + arms
-  const cactusGeo = useMemo(() => {
-    const group = new THREE.Group()
-
-    // Main trunk
-    const trunk = new THREE.CylinderGeometry(0.12, 0.18, 1, 8)
-    const trunkMesh = new THREE.Mesh(trunk)
-    trunkMesh.position.y = 0.5
-    group.add(trunkMesh)
-
-    // Arms (only for larger cacti)
-    const arm = new THREE.CylinderGeometry(0.07, 0.09, 0.5, 6)
-    const arm1 = new THREE.Mesh(arm)
-    arm1.position.set(0.2, 0.85, 0)
-    arm1.rotation.z = 0.4
-    group.add(arm1)
-
-    const arm2 = new THREE.Mesh(arm)
-    arm2.position.set(-0.18, 0.75, 0)
-    arm2.rotation.z = -0.35
-    group.add(arm2)
-
-    // Merge into single geometry
-    const merged: THREE.BufferGeometry[] = []
-    group.children.forEach(child => {
-      const mesh = child as THREE.Mesh
-      mesh.updateMatrix()
-      merged.push(mesh.geometry.clone().applyMatrix4(mesh.matrix))
-    })
-    const geo = mergeGeometries(merged)
-    return geo
-  }, [])
-
-  useEffect(() => {
-    if (!meshRef.current) return
-    // Scale and position
-    transforms.forEach((t: { x: number; z: number; scale: number; rotation: number }, i: number) => {
-      dummy.position.set(t.x, -0.8, t.z)
-      dummy.scale.set(t.scale, t.scale, t.scale)
-      dummy.rotation.y = t.rotation
-      dummy.updateMatrix()
-      meshRef.current.setMatrixAt(i, dummy.matrix)
-    })
-    meshRef.current.instanceMatrix.needsUpdate = true
-  }, [transforms, dummy])
-
-  return (
-    <instancedMesh
-      ref={meshRef}
-      args={[cactusGeo, undefined, COUNT]}
-      count={COUNT}
-    >
-      <meshStandardMaterial
-        color="#4a6b3a"
-        roughness={0.9}
-        metalness={0}
-        flatShading
-      />
-    </instancedMesh>
-  )
-}
-
-// ====================================================================
-// 3. FIRE PARTICLES
-// ====================================================================
-const FireParticles = () => {
-  const COUNT = 400
-
-  // Initialize particle data with useState lazy initializer
-  const [particleData] = useState(() => {
-    const pos = new Float32Array(COUNT * 3)
-    const sizes = new Float32Array(COUNT)
-    const speeds = new Float32Array(COUNT)
-    for (let i = 0; i < COUNT; i++) {
-      pos[i * 3]     = (Math.random() - 0.5) * 14
-      pos[i * 3 + 1] = Math.random() * 3 - 0.5
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 14
-      sizes[i] = 0.1 + Math.random() * 0.25
-      speeds[i] = 0.004 + Math.random() * 0.018
-    }
-    return { pos, sizes, speeds }
-  })
-
-  // Store arrays in refs to avoid useFrame mutation warnings
-  const posRef = useRef(particleData.pos)
-  const sizesRef = useRef(particleData.sizes)
-  const speedsRef = useRef(particleData.speeds)
-
-  const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.BufferAttribute(particleData.pos, 3))
-    geo.setAttribute('size', new THREE.BufferAttribute(particleData.sizes, 1))
-    return geo
-  }, [])
-
-  const fireTex = useMemo(() => {
-    const canvas = document.createElement('canvas')
-    canvas.width = 64; canvas.height = 128
-    const ctx = canvas.getContext('2d')!
-    for (let y = 0; y < 128; y++) {
-      const t = y / 128
-      let r = 1, g = 1, b = 0.9, a = 0.9
-      if (t > 0.1) { r = 1; g = 0.85 - t * 0.3; b = 0.1; a = 0.8 }
-      if (t > 0.3) { r = 1; g = 0.5 - t * 0.5; b = 0; a = 0.65 - t * 0.2 }
-      if (t > 0.6) { r = 0.9 - t * 0.4; g = 0.1 - t * 0.06; b = 0; a = 0.3 - t * 0.2 }
-      if (t > 0.85) { r = 0.2 - t * 0.15; g = 0; b = 0; a = 0.05 * (1 - t) * 10 }
-      a = Math.max(0, a)
-      const xVar = Math.sin(y * 0.25) * 0.35 + 0.5
-      for (let x = 0; x < 64; x++) {
-        const dx = Math.abs(x / 64 - xVar) * 10
-        const alpha = a * Math.exp(-dx * dx)
-        ctx.fillStyle = `rgba(${r * 255 | 0}, ${g * 255 | 0}, ${b * 255 | 0}, ${alpha})`
-        ctx.fillRect(x, y, 1, 1)
-      }
-    }
-    return new THREE.CanvasTexture(canvas)
-  }, [])
-
-  useFrame(({ clock }) => {
-    const pos = posRef.current
-    const sizes = sizesRef.current
-    const speeds = speedsRef.current
-    const time = clock.elapsedTime
-
-    for (let i = 0; i < COUNT; i++) {
-      pos[i * 3 + 1] += speeds[i] * (1 + 0.5 * Math.sin(time * 0.5 + i))
-      pos[i * 3]     += Math.sin(time * 2 + i * 0.7) * 0.002
-      pos[i * 3 + 2] += Math.cos(time * 1.5 + i * 0.5) * 0.002
-      sizes[i] = (0.1 + (speeds[i] - 0.004) * 8) * (1 + 0.7 * Math.min(pos[i * 3 + 1] / 3, 1))
-      if (pos[i * 3 + 1] > 3) {
-        pos[i * 3]     = (Math.random() - 0.5) * 14
-        pos[i * 3 + 1] = -0.5
-        pos[i * 3 + 2] = (Math.random() - 0.5) * 14
-      }
-    }
-  })
-
-  return (
-    <points geometry={geometry}>
-      <pointsMaterial map={fireTex} size={0.3} sizeAttenuation transparent depthWrite={false} blending={THREE.AdditiveBlending} opacity={0.8} />
-    </points>
-  )
-}
-
-// ====================================================================
-// 4. EMBER PARTICLES
-// ====================================================================
-const EmberParticles = () => {
-  const COUNT = 100
-
-  // Initialize particle data with useState lazy initializer
-  const [particleData] = useState(() => {
-    const pos = new Float32Array(COUNT * 3)
-    const sizes = new Float32Array(COUNT)
-    for (let i = 0; i < COUNT; i++) {
-      pos[i * 3]     = (Math.random() - 0.5) * 12
-      pos[i * 3 + 1] = Math.random() * 2.5 - 0.3
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 12
-      sizes[i] = 0.015 + Math.random() * 0.04
-    }
-    return { pos, sizes }
-  })
-
-  // Store arrays in refs to avoid useFrame mutation warnings
-  const posRef = useRef(particleData.pos)
-  const sizesRef = useRef(particleData.sizes)
-
-  const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.BufferAttribute(particleData.pos, 3))
-    geo.setAttribute('size', new THREE.BufferAttribute(particleData.sizes, 1))
-    return geo
-  }, [])
-
-  useFrame(({ clock }) => {
-    const pos = posRef.current
-    const sizes = sizesRef.current
-    const t = clock.elapsedTime
-    for (let i = 0; i < COUNT; i++) {
-      pos[i * 3 + 1] += 0.006 + Math.sin(t + i) * 0.002
-      pos[i * 3] += Math.sin(t * 2 + i) * 0.001
-      if (pos[i * 3 + 1] > 2.5) {
-        pos[i * 3]     = (Math.random() - 0.5) * 12
-        pos[i * 3 + 1] = -0.3
-        pos[i * 3 + 2] = (Math.random() - 0.5) * 12
-      }
-    }
-  })
-
-  return (
-    <points geometry={geometry}>
-      <pointsMaterial color="#ff8833" size={0.05} sizeAttenuation transparent blending={THREE.AdditiveBlending} depthWrite={false} opacity={0.85} />
-    </points>
-  )
-}
 
 // ====================================================================
 // 5. MOUSE TRACKER
@@ -604,9 +389,14 @@ export default function DesertScene() {
         <InfernoSky />
         <Lights />
         <BadlandsTerrain mouse={mouseRef} />
-        <Cacti />
-        <FireParticles />
-        <EmberParticles />
+        {/* Fuego volumétrico ray marching en el centro de la escena (Tatacoa) */}
+        <VolumetricFire position={[0, -0.8, 0]} height={2.4} radius={0.95} seed={3} />
+        {/* Fogata secundaria cerca del borde derecho */}
+        <VolumetricFire position={[4.2, -0.8, -2.5]} height={1.6} radius={0.55} seed={11} />
+        {/* Cactus columnares procedimentales con InstancedMesh (~4-5m altura efectiva) */}
+        <CactiColumnar count={80} height={4.4} radius={0.3} ridges={6} areaRadius={9} groundY={-0.8} />
+        {/* Flamas que siguen al mouse en 3D; complementa el burn overlay del shader */}
+        <CursorBurnFlames enabled />
         <MouseTracker mouse={mouseRef} />
       </Canvas>
     </div>

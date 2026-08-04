@@ -1,6 +1,6 @@
 # PROJECT.md — NVA Demons
 
-> **Estado:** Activo | **Versión:** 0.1.0 (Fase 1 MVP) | **Última actualización:** 2026-07-31
+> **Estado:** Activo | **Versión:** 0.2.0 (Fase 2 FXs) | **Última actualización:** 2026-08-03
 
 ---
 
@@ -103,10 +103,9 @@ Landing page 3D inmersiva para un colectivo de música electrónica con temátic
 |--------|-------------|------------|--------|--------------|
 | R-01 | Escena 3D con terrain shader + cárcavas | `components/Scene3D/DesertScene.tsx` | ✅ | Build exit 0, render en localhost |
 | R-02 | Cielo infernal con shader de color grading | `DesertScene.tsx` sky shader | ✅ | Paleta `#8b0000`/`#ff4500` visible |
-| R-03 | Cactus columnares procedimentales (InstancedMesh) | `DesertScene.tsx` (InstancedMesh) | ✅ | 4-5m height, distribución cárcavas |
-| R-04 | Fuego volumétrico con THREE.Fire | `components/Scene3D/FireEffect.tsx` | ✅ | Ray marching visible en fire zones |
-| R-05 | Cursor que quema la arena + flamas | `components/Scene3D/CursorBurn.tsx` | ✅ | CanvasTexture overlay + particle emit on mousemove |
-| R-06 | Sistema de partículas (chispas, humo, brasas) | `components/Scene3D/ParticleSystem.tsx` | ✅ | Partículas comet trail + smoke puffs |
+| R-03 | Cactus columnares procedimentales (InstancedMesh) | `components/Scene3D/CactiColumnar.tsx` | ✅ | 4-5m altura efectiva, 6 costillas, arms procedurales, 80 instancias |
+| R-04 | Fuego volumétrico con ray marching | `components/Scene3D/VolumetricFire.tsx` | ✅ | ShaderMaterial custom fbm domain-warp + gradient LUT + brasas/humo wawa-vfx |
+| R-05 | Cursor que quema la arena + flamas | `components/Scene3D/CursorBurnFlames.tsx`, `DesertScene.tsx` (canvas burn overlay) | ✅ | CanvasTexture burn en shader + VFXEmitter raycast al plano del terrain |
 | R-07 | UI completa: Hero, Navbar, Events, Music, Gallery, Tickets, Contact, Footer | `components/*.tsx` | ✅ | Visualización en localhost completa |
 | R-08 | Diseño responsive + animaciones Framer Motion | All components | ✅ | Responsive layout + scroll animations |
 | R-09 | Build passing: `npm run build` exit 0 | — | ✅ | npm run build → exit 0 |
@@ -192,6 +191,7 @@ El Desierto de la Tatacoa (Colombia) no es solo fondo — es paisaje activo:
 | Fase 1 FX | Efecto cursor que quema arena + fuego volumétrico THREE.Fire + fallback WebGL | bbae4fe | Cursor Burn observado + fire rendering |
 | Lint fix | Lint 0 errors (R3F ref pattern fixed) + build passing + .backup removed | 5d7a9c7 | npm run lint → 0 errors / 4 warnings |
 | Templates | GitHub issue/PR templates + CI 3-layer gates | bfcc6da | Workflow files committed |
+| Fase 2 FX | CursorBurnFlames (wawa-vfx, raycast al terrain), VolumetricFire (ShaderMaterial ray marching fbm domain-warp + LUT + brasas/humo wawa-vfx), CactiColumnar procedural columnar real 4-5m (InstancedMesh merged trunk+arms, 80 instancias). Componentes extraidos de DesertScene.tsx. Build exit 0, LSP 0 errors, gitleaks clean. | (pending commit) | npm run build → exit 0, LSP live_diagnostics 0 errors/0 warnings |
 
 ### Próximos Pasos (Backlog)
 
