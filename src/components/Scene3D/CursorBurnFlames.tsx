@@ -7,9 +7,9 @@
 // el shader "quema" texturalmente la arcilla, este componente escupe flamas vivas
 // en la posición world-space donde apunta el mouse.
 
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, type ComponentRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { VFXParticles, VFXEmitter, type VFXEmitterRef, vfxStore, RenderMode, AppearanceMode } from 'wawa-vfx'
+import { VFXParticles, VFXEmitter, vfxStore, RenderMode, AppearanceMode } from 'wawa-vfx'
 import * as THREE from 'three'
 
 // Plano horizontal del terreno en y = -0.8 (igual que BadlandsTerrain en DesertScene)
@@ -26,7 +26,7 @@ const t2 = (a: number, b: number): [number, number] => [a, b]
 const t3 = (a: number, b: number, c: number): [number, number, number] => [a, b, c]
 
 export default function CursorBurnFlames({ enabled = true }: CursorBurnFlamesProps) {
-  const emitterRef = useRef<typeof VFXEmitter | null>(null)
+  const emitterRef = useRef<ComponentRef<typeof VFXEmitter>>(null)
   const { camera, pointer } = useThree()
   const raycaster = useMemo(() => new THREE.Raycaster(), [])
   // Vive sólo en el renderer loop, no provoca re-render
