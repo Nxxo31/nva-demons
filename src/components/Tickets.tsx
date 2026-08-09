@@ -3,37 +3,116 @@
 import { motion } from 'framer-motion'
 import type { Variants } from 'framer-motion'
 import { Ticket, Check } from 'lucide-react'
-
-const TIERS = [
-  {
-    name: 'General',
-    price: '$350',
-    description: 'Acceso al evento',
-    features: ['Entrada general', '1 bebida de cortesía', 'Acceso a zona principal'],
-    highlighted: false,
-  },
-  {
-    name: 'VIP',
-    price: '$700',
-    description: 'Experiencia premium',
-    features: ['Acceso prioritario', 'Barra libre (bebidas seleccionadas)', 'Zona VIP con vista privilegiada', 'Meet & greet con artistas'],
-    highlighted: true,
-  },
-  {
-    name: 'Ritual Pack',
-    price: '$1,200',
-    description: 'Experiencia completa',
-    features: ['Todo lo de VIP', 'Merchandising exclusivo', 'Acceso al after-party', 'Fotografía con el colectivo', 'Transporte ida y vuelta'],
-    highlighted: false,
-  },
-]
+import { getEvents, getEventById } from '@/modules/events/eventService'
+import { createCheckoutSession } from '@/modules/checkout/checkoutService'
+import { HiEvent, HiTicketType } from '@/types/hiEvents'
+import { useState, useEffect } from 'react'
 
 const cardVariants: Variants = {
   hidden: { opacity: 0, y: 40 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
 }
 
 export default function Tickets() {
+  const [events, setEvents] = useState<HiEvent[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch events on mount
+  useEffect(() => {
+    fetchEvents()
+  }, [])
+
+  async function fetchEvents() {
+    try {
+      setLoading(true)
+      const fetchedEvents = await getEvents()
+      setEvents(fetchedEvents)
+    } catch (err) {
+      setError('Failed to load events')
+      console.error('Error fetching events:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handlePurchase(eventId: string, ticketTypeId: string, quantity: number, purchaserInfo: { name: string; email: string }) {
+    try {
+      const session = await createCheckoutSession(eventId, ticketTypeId, quantity, purchaserInfo)
+      // Redirect to checkout URL (in a real app, you might want to handle this differently)
+      window.location.href = session.checkoutUrl
+    } catch (err) {
+      setError('Failed to initiate purchase')
+      console.error('Error creating checkout session:', err)
+    }
+  }
+
+  if (loading) {
+    return (
+      <section id="tickets" className="relative py-24 px-4">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7 }}
+          >
+            <h2 className="text-3xl md:text-5xl font-cinzel font-bold fire-text mb-4">
+              Tickets
+            </h2>
+            <div className="section-divider max-w-xs mx-auto mb-4" />
+            <p className="text-gray-500 max-w-xl mx-auto">
+              Asegura tu lugar en el ritual
+            </p>
+          </motion.div>
+
+          <div className="text-center py-12">
+            <div className="animate-pulse h-8 w-48 bg-red-900/20 rounded mx-auto mb-4"></div>
+            <p className="text-gray-500">Cargando eventos...</p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section id="tickets" className="relative py-24 px-4">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7 }}
+          >
+            <h2 className="text-3xl md:text-5xl font-cinzel font-bold fire-text mb-4">
+              Tickets
+            </h2>
+            <div className="section-divider max-w-xs mx-auto mb-4" />
+            <p className="text-gray-500 max-w-xl mx-auto">
+              Asegura tu lugar en el ritual
+            </p>
+          </motion.div>
+
+          <div className="text-center py-12">
+            <div className="flex items-center justify-center gap-4">
+              <span className="text-red-500">⚠️</span>
+              <p className="text-red-500">{error}</p>
+            </div>
+            <button
+              onClick={fetchEvents}
+              className="mt-6 py-3 px-6 rounded-lg font-cinzel text-sm tracking-wider transition-all duration-300 bg-gradient-to-r from-red-800 to-orange-600 text-white hover:from-red-700 hover:to-orange-500 shadow-lg shadow-red-900/30"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section id="tickets" className="relative py-24 px-4">
       <div className="max-w-6xl mx-auto">
@@ -54,56 +133,80 @@ export default function Tickets() {
           </p>
         </motion.div>
 
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {TIERS.map((tier, i) => (
+        {/* Events Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {events.map((event: HiEvent, index: number) => (
             <motion.div
-              key={i}
+              key={event.id}
               variants={cardVariants}
               initial="hidden"
               whileInView="show"
               viewport={{ once: true, margin: '-30px' }}
-              transition={{ delay: i * 0.1 }}
+              transition={{ delay: index * 0.1 }}
               whileHover={{ y: -8, transition: { duration: 0.2 } }}
-              className={`relative rounded-xl transition-all duration-500 ${
-                tier.highlighted
-                  ? 'bg-gradient-to-b from-red-950/60 to-black/60 border-2 border-orange-700/50 scale-105 md:scale-110'
-                  : 'bg-black/40 border border-red-900/20 hover:border-red-800/40'
-              }`}
+              className="relative rounded-xl overflow-hidden transition-all duration-500 bg-black/40 border border-red-900/20 hover:border-red-800/40"
             >
-              {tier.highlighted && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-red-800 to-orange-600 rounded-full text-xs font-bold uppercase tracking-wider">
-                  Más Popular
+              {/* Event Image */}
+              {event.imageUrl && (
+                <div className="relative h-48">
+                  <img
+                    src={event.imageUrl}
+                    alt={event.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
                 </div>
               )}
 
-              <div className={`p-6 ${tier.highlighted ? 'pt-8' : ''}`}>
+              <div className="p-6 pt-8">
                 <div className="flex items-center gap-2 mb-2">
                   <Ticket className="w-4 h-4 text-orange-600" />
-                  <h3 className="text-lg font-cinzel font-bold text-white">{tier.name}</h3>
+                  <h3 className="text-lg font-cinzel font-bold text-white">{event.title}</h3>
                 </div>
-                <p className="text-xs text-gray-600 mb-4">{tier.description}</p>
-                <div className="mb-6">
-                  <span className="text-4xl font-bold fire-text">{tier.price}</span>
-                  <span className="text-gray-600 text-sm ml-1">COP</span>
-                </div>
-                <ul className="space-y-2 mb-8">
-                  {tier.features.map((feat, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm text-gray-400">
-                      <Check className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                      {feat}
-                    </li>
+                <p className="text-xs text-gray-600 mb-3">{event.date}</p>
+                <p className="text-sm text-gray-500 mb-4">{event.location}</p>
+                <p className="text-gray-400 mb-6 line-clamp-2">{event.description}</p>
+
+                {/* Ticket Types */}
+                <div className="space-y-4">
+                  {event.ticketTypes.map((ticketType: HiTicketType, ticketIndex: number) => (
+                    <div
+                      key={ticketType.id}
+                      className={`flex items-start gap-3 p-4 rounded-lg border border-red-900/20 transition-all duration-300 hover:border-red-800/30 ${
+                        ticketIndex === 0 ? 'bg-black/20' : ''
+                      }`}
+                    >
+                      <div className="flex-shrink-0">
+                        <span className="text-xs text-red-600 bg-red-900/20 px-2 py-0.5 rounded">
+                          ${ticketType.price / 100}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-cinzel font-semibold text-white mb-1">{ticketType.name}</h4>
+                        <p className="text-xs text-gray-400">{ticketType.description}</p>
+                        <button
+                          onClick={() => {
+                            // In a real app, you'd show a modal for purchaser info
+                            // For now, we'll use placeholder data
+                            handlePurchase(
+                              event.id,
+                              ticketType.id,
+                              1,
+                              { name: 'Comprador', email: 'comprador@ejemplo.com' }
+                            )
+                          }}
+                          className={`w-full mt-3 py-2 rounded-lg font-cinzel text-sm tracking-wider transition-all duration-300 ${
+                            ticketType.id === event.ticketTypes[0]?.id
+                              ? 'bg-gradient-to-r from-red-800 to-orange-600 text-white hover:from-red-700 hover:to-orange-500 shadow-lg shadow-red-900/30'
+                              : 'border border-red-900/50 text-gray-400 hover:text-white hover:border-orange-700'
+                          }`}
+                        >
+                          Comprar
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                </ul>
-                <button
-                  className={`w-full py-3 rounded-lg font-cinzel text-sm tracking-wider transition-all duration-300 ${
-                    tier.highlighted
-                      ? 'bg-gradient-to-r from-red-800 to-orange-600 text-white hover:from-red-700 hover:to-orange-500 shadow-lg shadow-red-900/30'
-                      : 'border border-red-900/50 text-gray-400 hover:text-white hover:border-orange-700'
-                  }`}
-                >
-                  Comprar
-                </button>
+                </div>
               </div>
             </motion.div>
           ))}
