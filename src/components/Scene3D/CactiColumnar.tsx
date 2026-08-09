@@ -1,13 +1,5 @@
 'use client'
 
-// CactiColumnar — Cactus columnares procedimentales con InstancedMesh.
-// Inspirado en Cereus peruvianus / Cereus hexagonus (cactus columnares de la Tatacoa):
-//   tronco principal con 4-6 costillas verticales (ridges), segmentado, 4-5m altura,
-//   brazos laterales que nacen ~40-70% de la altura con misma morfología columnar.
-// Se rewrite como componente dedicado para separarse de DesertScene y poder
-// exponer variantes y un color profile de desierto (verde-oliva apagado con
-// pápulas espinosas simuladas via bumpiness standard material).
-
 import { useRef, useMemo, useState, useEffect } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
@@ -24,6 +16,8 @@ type CactiColumnarProps = {
   areaRadius?: number
   /** Posición Y del suelo (debe coincidir con el terreno). */
   groundY?: number
+  /** Geometría pre-generada (para LOD) */
+  customGeometry?: THREE.BufferGeometry
 }
 
 type Transform = {
@@ -69,7 +63,6 @@ function buildColumnarGeometry(
     const ringY = v * height
     // Taper: suavemente más fino arriba
     const ringRadius = radius * (1.0 - (1.0 - taperTop) * Math.pow(v, 1.5))
-
     // Pequeño bulge en el medio (cactus columnares son barrigones)
     const bulge = 1.0 + 0.04 * Math.sin(v * Math.PI)
     const r = ringRadius * bulge
@@ -133,9 +126,22 @@ export default function CactiColumnar({
   ridges = 6,
   areaRadius = 9,
   groundY = -0.8,
+  customGeometry,
 }: CactiColumnarProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null!)
   const dummy = useMemo(() => new THREE.Object3D(), [])
+
+  // Si no hay geometría personalizada, generar la estándar
+  const trunkGeo = useMemo(() => {
+    if (customGeometry) return customGeometry
+    return buildColumnarGeometry(height, radius, ridges)
+  }, [height, radius, ridges, customGeometry])
+
+  // Geometría del brazo (más pequeña, un diferencial respecto al tronco)
+  const armGeo = useMemo(() => {
+    if (customGeometry) return customGeometry // Para LOD low, usar la misma geometría simple
+    return buildColumnarGeometry(height * 0.4, radius * 0.7, ridges, 0.85, 12, 0.08)
+  }, [height, radius, ridges, customGeometry])
 
   const [transforms] = useState<Transform[]>(() => {
     // PRNG determinista-ish con seed para posiciones estables
@@ -167,23 +173,15 @@ export default function CactiColumnar({
     return data
   })
 
-  // Geometría del tronco principal (pre-clonada por arms)
-  const trunkGeo = useMemo(() => {
-    return buildColumnarGeometry(height, radius, ridges)
-  }, [height, radius, ridges])
-
-  // Geometría del brazo (más pequeña, un diferencial respecto al tronco)
-  const armGeo = useMemo(() => {
-    return buildColumnarGeometry(height * 0.4, radius * 0.7, ridges, 0.85, 12, 0.08)
-  }, [height, radius, ridges])
-
   // Combinamos el tronco + arms en una sola geometría para una draw call via InstancedMesh
   // (1 mesh instance = tronco + N arms; la transform de InstancedMesh rota/escala todo de una.
   // Nota: NO queremos unir arms en geometría cuando cada cactus tiene un número distinto —
   // estrategia: clonar con un máximo de 2 arms y simplemente mover los no-usados fuera de la pantalla
   // (no son visibles porque superponen al tronco). Más simple y performante.)
-
   const mergedGeo = useMemo(() => {
+    // Para LOD low, usar solo la geometría simple sin brazos
+    if (customGeometry) return customGeometry
+
     // Combina tronco (centrado) + hasta 2 arms rotados/posicionados relativos
     const parts: THREE.BufferGeometry[] = []
 
@@ -219,7 +217,7 @@ export default function CactiColumnar({
       return trunkGeo
     }
     return merged
-  }, [trunkGeo, armGeo, height, radius])
+  }, [trunkGeo, armGeo, height, radius, customGeometry])
 
   // Material: verde-oliva apagado con high roughness, ligera bumpiness sin mapa
   // (flatShading realzaría demasiado las costillas — usamos normal computado).

@@ -2,10 +2,11 @@
 
 import { useRef, useEffect, useState, useMemo } from 'react'
 import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
+import { AdaptiveDpr, AdaptiveEvents, Preload, Bvh } from '@react-three/drei'
 import * as THREE from 'three'
 import CursorBurnFlames from './CursorBurnFlames'
 import VolumetricFire from './VolumetricFire'
-import CactiColumnar from './CactiColumnar'
+import CactiLod from '@/components/Scene3D/lod/CactiLOD'
 
 // ====================================================================
 // 1. BADLANDS TERRAIN — Tatacoa-inspired (cárcavas, arcilla, terracota)
@@ -353,7 +354,7 @@ const InfernoSky = () => {
 }
 
 // ====================================================================
-// 8. MAIN EXPORT WITH FALLBACK
+// 8. MAIN EXPORT WITH FALLBACK + PERFORMANCE OPTIMIZATIONS
 // ====================================================================
 export default function DesertScene() {
   const mouseRef = useRef(new THREE.Vector2(0, 0))
@@ -386,18 +387,31 @@ export default function DesertScene() {
         }}
         onCreated={({ gl }) => { gl.setClearColor('#1a0505') }}
       >
-        <InfernoSky />
-        <Lights />
-        <BadlandsTerrain mouse={mouseRef} />
-        {/* Fuego volumétrico ray marching en el centro de la escena (Tatacoa) */}
-        <VolumetricFire position={[0, -0.8, 0]} height={2.4} radius={0.95} seed={3} />
-        {/* Fogata secundaria cerca del borde derecho */}
-        <VolumetricFire position={[4.2, -0.8, -2.5]} height={1.6} radius={0.55} seed={11} />
-        {/* Cactus columnares procedimentales con InstancedMesh (~4-5m altura efectiva) */}
-        <CactiColumnar count={80} height={4.4} radius={0.3} ridges={6} areaRadius={9} groundY={-0.8} />
-        {/* Flamas que siguen al mouse en 3D; complementa el burn overlay del shader */}
-        <CursorBurnFlames enabled />
-        <MouseTracker mouse={mouseRef} />
+        {/* Performance optimizations */}
+        <AdaptiveDpr /> {/* Dynamically adjust DPR based on FPS */}
+        <AdaptiveEvents /> {/* Disable pointer events when FPS drops */}
+        <Preload all /> {/* Preload all textures */}
+        <Bvh /* Enable BVH for frustum culling and faster raycasting */>
+          <InfernoSky />
+          <Lights />
+          <BadlandsTerrain mouse={mouseRef} />
+          {/* Fuego volumétrico ray marching en el centro de la escena (Tatacoa) */}
+          <VolumetricFire position={[0, -0.8, 0]} height={2.4} radius={0.95} seed={3} />
+          {/* Fogata secundaria cerca del borde derecho */}
+          <VolumetricFire position={[4.2, -0.8, -2.5]} height={1.6} radius={0.55} seed={11} />
+          {/* Cactus columnares procedimentales con InstancedMesh (~4-5m altura efectiva) + LOD */}
+          <CactiLod
+            count={80}
+            height={4.4}
+            radius={0.3}
+            ridges={6}
+            areaRadius={9}
+            groundY={-0.8}
+          />
+          {/* Flamas que siguen al mouse en 3D; complementa el burn overlay del shader */}
+          <CursorBurnFlames enabled />
+          <MouseTracker mouse={mouseRef} />
+        </Bvh>
       </Canvas>
     </div>
   )
