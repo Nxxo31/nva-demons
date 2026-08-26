@@ -3,10 +3,8 @@
 import { motion } from 'framer-motion'
 import type { Variants } from 'framer-motion'
 import { Ticket, Check } from 'lucide-react'
-import { getEvents, getEventById } from '@/modules/events/eventService'
-import { createCheckoutSession } from '@/modules/checkout/checkoutService'
 import { HiEvent, HiTicketType } from '@/types/hiEvents'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 const cardVariants: Variants = {
   hidden: { opacity: 0, y: 40 },
@@ -18,29 +16,39 @@ export default function Tickets() {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch events on mount
-  useEffect(() => {
-    fetchEvents()
-  }, [])
-
-  async function fetchEvents() {
+  const fetchEvents = useCallback(async () => {
     try {
       setLoading(true)
-      const fetchedEvents = await getEvents()
-      setEvents(fetchedEvents)
+      const res = await fetch('/api/events', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      setEvents(data.events || [])
     } catch (err) {
       setError('Failed to load events')
       console.error('Error fetching events:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  // Fetch events on mount
+  useEffect(() => {
+    fetchEvents()
+  }, [fetchEvents])
 
   async function handlePurchase(eventId: string, ticketTypeId: string, quantity: number, purchaserInfo: { name: string; email: string }) {
     try {
-      const session = await createCheckoutSession(eventId, ticketTypeId, quantity, purchaserInfo)
-      // Redirect to checkout URL (in a real app, you might want to handle this differently)
-      window.location.href = session.checkoutUrl
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, ticketTypeId, quantity, purchaserInfo }),
+      })
+      if (!res.ok) throw new Error(`Checkout failed: ${res.status}`)
+      const session = await res.json()
+      // Redirect to Hi.Events checkout URL
+      if (session.checkoutUrl) {
+        window.location.href = session.checkoutUrl
+      }
     } catch (err) {
       setError('Failed to initiate purchase')
       console.error('Error creating checkout session:', err)

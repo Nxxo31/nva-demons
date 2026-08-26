@@ -111,6 +111,53 @@ npm run build
 npm run start
 ```
 
+## 🚀 Deployment (Vercel)
+
+The project is configured for Vercel with `vercel.json` (build config, security
+headers, static asset caching, CO/Bogotá region).
+
+### Prerequisites
+
+- A [Vercel](https://vercel.com) account
+- [Vercel CLI](https://vercel.com/docs/cli): `npm i -g vercel`
+
+### Environment Variables
+
+Copy `.env.example` to `.env.local` for local development, then set the same
+variables in the Vercel project settings (Dashboard → Settings → Environment
+Variables):
+
+| Variable | Scope | Description |
+|---|---|---|
+| `NEXT_PUBLIC_HI_EVENTS_API_KEY` | Public | Hi.Events public key (browser-visible) |
+| `NEXT_PUBLIC_SITE_URL` | Public | Canonical site URL (SEO, OG, sitemap) |
+| `HI_EVENTS_API_URL` | Server | Hi.Events API base URL |
+| `HI_EVENTS_API_SECRET` | Server | Hi.Events secret key (server-only) |
+
+### Deploy
+
+```bash
+# Quick deploy via CLI
+./scripts/deploy.sh          # production
+./scripts/deploy.sh --preview  # preview deployment
+
+# Or deploy manually
+vercel              # preview deploy
+vercel --prod       # production deploy
+```
+
+### Build Configuration
+
+- **Framework**: Next.js (App Router)
+- **Build command**: `next build`
+- **Output directory**: `.next`
+- **Runtime**: Node.js (default)
+- **Region**: `bog1` (Bogotá, CO) for low-latency in Colombia
+- **Static assets** (`/textures`, `/images`, `/_next/static`): cached with
+  `Cache-Control: public, max-age=31536000, immutable`
+- **Security headers**: `X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy`, `Permissions-Policy`
+
 ## 🖥️ Hardware Requirements
 
 3D rendering is GPU-intensive. For smooth performance:

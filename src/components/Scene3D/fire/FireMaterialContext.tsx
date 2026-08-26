@@ -6,7 +6,7 @@ import { VFXParticles, VFXEmitter, RenderMode, AppearanceMode } from 'wawa-vfx'
 import * as THREE from 'three'
 
 // Context for sharing fire material uniforms across instances
-const FireMaterialContext = createContext(null | {
+const FireMaterialContext = createContext<{
   uTime: { value: number };
   uHeight: { value: number };
   uRadius: { value: number };
@@ -17,7 +17,7 @@ const FireMaterialContext = createContext(null | {
   uNoiseRamp: { value: THREE.CanvasTexture };
   uCameraRight: { value: THREE.Vector3 };
   uCameraUp: { value: THREE.Vector3 };
-})
+} | null>(null);
 
 // Helper functions
 const t2 = (a: number, b: number): [number, number] => [a, b]
@@ -98,7 +98,8 @@ export function FireMaterialProvider({ children }: { children: React.ReactNode }
     // Update camera basis for billboarding
     const right = new THREE.Vector3()
     const up = new THREE.Vector3()
-    camera.matrixWorld.extractBasis(right, up)
+    const look = new THREE.Vector3() // not used, but required by signature
+    camera.matrixWorld.extractBasis(right, up, look)
     sharedUniforms.uCameraRight.value.copy(right)
     sharedUniforms.uCameraUp.value.copy(up)
   })

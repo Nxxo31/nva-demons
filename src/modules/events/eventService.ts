@@ -99,3 +99,31 @@ export async function getEventTickets(eventId: string): Promise<HiTicket[]> {
     throw error;
   }
 }
+
+/**
+ * Fetch tickets purchased by the current user (requires auth context on server).
+ * Used by the /api/events/user-tickets route and the My Tickets page.
+ */
+export async function getUserTickets(userEmail?: string): Promise<HiTicket[]> {
+  try {
+    const url = userEmail
+      ? `${HI_EVENTS_API_URL}/users/tickets?email=${encodeURIComponent(userEmail)}`
+      : `${HI_EVENTS_API_URL}/users/tickets`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user tickets: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.tickets || [];
+  } catch (error) {
+    console.error("Error fetching user tickets:", error);
+    throw error;
+  }
+}

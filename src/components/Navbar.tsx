@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { label: 'Eventos', href: '#events' },
   { label: 'Música', href: '#music' },
   { label: 'Galería', href: '#gallery' },
-  { label: 'Tickets', href: '#tickets' },
+  { label: 'Mis Tickets', href: '/my-tickets' },
   { label: 'Contacto', href: '#contact' },
 ]
 

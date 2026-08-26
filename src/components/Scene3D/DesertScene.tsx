@@ -400,14 +400,7 @@ export default function DesertScene() {
           {/* Fogata secundaria cerca del borde derecho */}
           <VolumetricFire position={[4.2, -0.8, -2.5]} height={1.6} radius={0.55} seed={11} />
           {/* Cactus columnares procedimentales con InstancedMesh (~4-5m altura efectiva) + LOD */}
-          <CactiLod
-            count={80}
-            height={4.4}
-            radius={0.3}
-            ridges={6}
-            areaRadius={9}
-            groundY={-0.8}
-          />
+          <CactiLod />
           {/* Flamas que siguen al mouse en 3D; complementa el burn overlay del shader */}
           <CursorBurnFlames enabled />
           <MouseTracker mouse={mouseRef} />

@@ -7,10 +7,11 @@ import { getEventById } from "@/modules/events/eventService";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const event = await getEventById(params.id);
+    const { id } = await params;
+    const event = await getEventById(id);
     return NextResponse.json({ event });
   } catch (error) {
     return NextResponse.json(
