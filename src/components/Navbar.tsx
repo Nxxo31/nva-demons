@@ -1,0 +1,110 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Flame, Menu, X } from 'lucide-react'
+
+const NAV_ITEMS = [
+  { label: 'Inicio', href: '#hero' },
+  { label: 'Eventos', href: '#events' },
+  { label: 'Música', href: '#music' },
+  { label: 'Galería', href: '#gallery' },
+  { label: 'Mis Tickets', href: '/my-tickets' },
+  { label: 'Contacto', href: '#contact' },
+]
+
+export default function Navbar() {
+  const [isOpen, setIsOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  return (
+    <motion.nav
+      initial={{ y: -80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        scrolled
+          ? 'bg-black/80 backdrop-blur-lg border-b border-red-900/30'
+          : 'bg-transparent'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 md:h-20">
+          {/* Logo */}
+          <motion.a
+            href="#hero"
+            className="flex items-center gap-2 group"
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          >
+            <Flame className="w-6 h-6 text-orange-500 group-hover:text-orange-400 transition-colors" />
+            <span className="font-cinzel text-xl font-bold fire-text">
+              NVA DEMONS
+            </span>
+          </motion.a>
+
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-8">
+            {NAV_ITEMS.map((item, i) => (
+              <motion.a
+                key={item.href}
+                href={item.href}
+                className="text-sm text-gray-400 hover:text-orange-400 transition-colors duration-300 tracking-wider uppercase font-cinzel"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.08 }}
+                whileHover={{ y: -2 }}
+              >
+                {item.label}
+              </motion.a>
+            ))}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <motion.button
+            className="md:hidden text-gray-400 hover:text-orange-400 transition-colors"
+            onClick={() => setIsOpen(!isOpen)}
+            whileTap={{ scale: 0.9 }}
+          >
+            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="md:hidden bg-black/95 backdrop-blur-lg border-b border-red-900/30 overflow-hidden"
+          >
+            <div className="px-4 py-4 space-y-3">
+              {NAV_ITEMS.map((item, i) => (
+                <motion.a
+                  key={item.href}
+                  href={item.href}
+                  className="block text-sm text-gray-400 hover:text-orange-400 transition-colors tracking-wider uppercase font-cinzel py-2"
+                  onClick={() => setIsOpen(false)}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  {item.label}
+                </motion.a>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.nav>
+  )
+}
